@@ -40,23 +40,28 @@ class Block(nn.Module):
         self.shift = Parameter(torch.zeros(in_channels))
 
         self.main = nn.Sequential(
+            nn.LayerNorm(in_channels),
             nn.Linear(in_channels, mid_channels),
             nn.GELU(),
             nn.Linear(mid_channels, out_channels),
         )
 
         # squeeze-excitation / gated activation
-        self.squeeze = nn.Sequential(
+        self.gate_mean = nn.Sequential(
             Reduce("b h w c -> b () () c", "mean"),
+            nn.LayerNorm(in_channels),
             nn.Linear(in_channels, mid_channels),
             nn.GELU(),
             nn.Linear(mid_channels, out_channels),
             nn.Sigmoid(),
         )
 
-        # ! Can be costy!
         self.skip = (
-            nn.Linear(in_channels, out_channels)
+            # TODO add full linear option?
+            nn.Sequential(
+                nn.Linear(in_channels, mid_channels),
+                nn.Linear(mid_channels, out_channels),
+            )
             if in_channels != out_channels
             else nn.Identity()
         )
@@ -65,7 +70,7 @@ class Block(nn.Module):
         # affine transformation
         xn = x * self.scale + self.shift
 
-        return self.skip(x) + self.main(xn) * self.squeeze(xn)
+        return self.skip(x) + self.main(xn) * self.gate_mean(xn)
 
     def __repr__(self) -> str:
         name = self.__class__.__qualname__
