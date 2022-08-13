@@ -10,12 +10,14 @@ from torch import Tensor
 
 from einops.layers.torch import Reduce
 
-# TODO add normalization layers
+
 class Block(nn.Module):
     def __init__(
         self,
         in_channels: int,
         out_channels: Optional[int] = None,
+        /,
+        *,
         ratio: float = 1,
     ) -> None:
         super().__init__()
@@ -38,7 +40,6 @@ class Block(nn.Module):
         self.shift = Parameter(torch.zeros(in_channels))
 
         self.main = nn.Sequential(
-            nn.LayerNorm(in_channels),
             nn.Linear(in_channels, mid_channels),
             nn.GELU(),
             nn.Linear(mid_channels, out_channels),
@@ -46,7 +47,6 @@ class Block(nn.Module):
 
         # squeeze-excitation / gated activation
         self.squeeze = nn.Sequential(
-            nn.LayerNorm(in_channels),  # ?
             Reduce("b h w c -> b () () c", "mean"),
             nn.Linear(in_channels, mid_channels),
             nn.GELU(),
@@ -61,7 +61,7 @@ class Block(nn.Module):
             else nn.Identity()
         )
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor, /) -> Tensor:
         # affine transformation
         xn = x * self.scale + self.shift
 

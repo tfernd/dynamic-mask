@@ -6,14 +6,14 @@ import torch.nn as nn
 from torch.nn.parameter import Parameter
 from torch import Tensor
 
-from ..utils import auto_grad
-
 
 class PositionalEncoding(nn.Module):
     def __init__(
         self,
         features: int,
-        ndim: Literal[1] = 1,  # TODO implement support for higher dimensions
+        /,
+        *,
+        ndim: Literal[1, 2, 3] = 1,
         requires_grad: bool = False,
     ):
         super().__init__()
@@ -25,13 +25,20 @@ class PositionalEncoding(nn.Module):
         # layers
         idx = torch.arange(features)
 
-        A = torch.ones(1, features)
-        freq = 10_000 ** idx.div(-features)
-        phase = idx.fmod(2).mul(torch.pi / 2)
+        A = torch.ones(ndim, features)
+        gamma = torch.linspace(8_000, 12_000, ndim).view(ndim, 1)
+        freq = gamma ** idx.div(-features)
+        phase = idx.fmod(2).mul(torch.pi / 2).expand(ndim, features)
 
-        self.A = Parameter(A.view(1, 1, -1), requires_grad)
-        self.freq = Parameter(freq.view(1, 1, -1), requires_grad)
-        self.phase = Parameter(phase.view(1, 1, -1), requires_grad)
+        # add spatial dimensions
+        shape = [1] * ndim
+        A = A.unsqueeze(1).unflatten(1, shape)
+        freq = freq.unsqueeze(1).unflatten(1, shape)
+        phase = phase.unsqueeze(1).unflatten(1, shape)
+
+        self.A = Parameter(A, requires_grad=requires_grad)
+        self.freq = Parameter(freq, requires_grad=requires_grad)
+        self.phase = Parameter(phase, requires_grad=requires_grad)
 
     @property
     def requires_grad(self) -> bool:
@@ -40,18 +47,22 @@ class PositionalEncoding(nn.Module):
                 return True
         return False
 
-    @auto_grad
-    def embedding_like(self, x: Tensor) -> Tensor:
-        B, T, C = x.shape
+    def forward(self, x: Tensor, /) -> Tensor:
+        N, *shape, C = x.shape
 
-        time = torch.arange(T, device=x.device).view(1, -1, 1)
-        emb = self.A * torch.cos(self.freq * time + self.phase)
+        idx = torch.stack(
+            torch.meshgrid(
+                [torch.arange(i, device=x.device) for i in shape],
+                indexing="ij",
+            )
+        ).unsqueeze(-1)
 
-        return emb
+        arg = self.freq.mul(idx).add(self.phase)
+        out = self.A.mul(arg.sin())
+        out = out.mean(0, keepdim=True)
 
-    @auto_grad
-    def add(self, x: Tensor) -> Tensor:
-        return x + self.embedding_like(x)
+        return out
+
 
     def __repr__(self) -> str:
         name = self.__class__.__qualname__

@@ -21,10 +21,12 @@ class DynamicAutoEncoder(pl.LightningModule):
 
     def __init__(
         self,
-        shape: tuple[int, int, int],
-        patch: int,
-        channel_ratio: float = 1,
-        spatial_ratio: float = 1,
+        *,
+        num_channels: int,
+        patch_size: int,
+        ratio: float = 1,
+        num_heads: int = 1,
+        head_size: Optional[int] = None,
         encoder_layers: int = 1,
         decoder_layers: int = 1,
     ) -> None:
@@ -33,28 +35,24 @@ class DynamicAutoEncoder(pl.LightningModule):
         # parameters
         self.save_hyperparameters()
 
-        H, W, C = shape
-        P = patch
-        self.emb_size = E = C * P**2
-        self.spatial_size = H // P * W // P
-
-        ratios = (channel_ratio, spatial_ratio)
-        layers = (encoder_layers, decoder_layers)
-        self.name = f"DyAE({shape})_p{patch}_r{ratios}_n{layers}"
+        self.emb_size = num_channels * patch_size**2
+        self.name = f"DyAE_c{num_channels}_p{patch_size}_r{ratio}_n({num_heads}x{head_size})_N({encoder_layers}x{decoder_layers})"
 
         # layers
         self.patch_encoder = PatchEncoder(
-            shape, patch, channel_ratio, spatial_ratio, encoder_layers
+            num_channels, patch_size, ratio, num_heads, head_size, encoder_layers
         )
         self.patch_decoder = PatchDecoder(
-            shape, patch, channel_ratio, spatial_ratio, decoder_layers
+            num_channels, patch_size, ratio, num_heads, head_size, decoder_layers
         )
-        self.mask_latent = MaskLatent(E)
+        self.mask_latent = MaskLatent(self.emb_size)
 
     @auto_grad
     def encode(
         self,
         x: Tensor,
+        /,
+        *,
         n: Optional[int] = None,
     ) -> tuple[Tensor, Optional[Tensor]]:
         x = x.to(self.device)
@@ -62,12 +60,12 @@ class DynamicAutoEncoder(pl.LightningModule):
         z = self.patch_encoder(x)
 
         z, mask = self.mask_latent.mask(z)
-        z = self.mask_latent.crop(z, n)
+        z = self.mask_latent.crop(z, n=n)
 
         return z, mask
 
     @auto_grad
-    def decode(self, z: Tensor) -> Tensor:
+    def decode(self, z: Tensor, /) -> Tensor:
         z = z.to(self.device)
 
         z = self.mask_latent.expand(z)
@@ -80,14 +78,14 @@ class DynamicAutoEncoder(pl.LightningModule):
         return torch.optim.AdamW(self.parameters(), lr=self.lr)
 
     @auto_grad
-    def loss(self, data: Tensor, out: Tensor) -> Tensor:
+    def loss(self, data: Tensor, out: Tensor, /) -> Tensor:
         data = data.to(self.device)
         out = out.to(self.device)
 
         return F.l1_loss(data.float(), out.float())
 
     @auto_grad
-    def fft_loss(self, data: Tensor, out: Tensor) -> Tensor:
+    def fft_loss(self, data: Tensor, out: Tensor, /) -> Tensor:
         data = data.to(self.device)
         out = out.to(self.device)
 
@@ -102,6 +100,7 @@ class DynamicAutoEncoder(pl.LightningModule):
         self,
         batch: tuple[Tensor, ...],
         idx: int,
+        /,
     ) -> Tensor:
         data, *_ = batch
 

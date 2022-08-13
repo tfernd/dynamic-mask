@@ -12,7 +12,10 @@ class MaskLatent(nn.Module):
     def __init__(
         self,
         features: int,
-        p: float = 0,  # TODO add support for p
+        /,
+        *,
+        # TODO add support for p
+        p: float = 0,
     ) -> None:
         super().__init__()
 
@@ -27,7 +30,7 @@ class MaskLatent(nn.Module):
         masks = masks[:, 1:]
         self.register_buffer("masks", masks)
 
-    def mask(self, z: Tensor) -> tuple[Tensor, Optional[Tensor]]:
+    def mask(self, z: Tensor, /) -> tuple[Tensor, Optional[Tensor]]:
         if not self.training:
             return z, None
 
@@ -42,6 +45,8 @@ class MaskLatent(nn.Module):
     def crop(
         self,
         z: Tensor,
+        /,
+        *,
         n: Optional[int] = None,
     ) -> Tensor:
         if n is None:
@@ -51,7 +56,7 @@ class MaskLatent(nn.Module):
 
         return z[..., :n]
 
-    def expand(self, z: Tensor) -> Tensor:
+    def expand(self, z: Tensor, /) -> Tensor:
         *shape, C = z.shape
 
         if C == self.features:

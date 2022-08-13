@@ -14,7 +14,9 @@ class QuantizeLatent(nn.Module):
     def __init__(
         self,
         features: int,
+        /,
         code_size: int,
+        *,
         beta: float = 0.1,
     ):
         super().__init__()
@@ -29,7 +31,7 @@ class QuantizeLatent(nn.Module):
         self.emb = Parameter(emb)
 
     @auto_grad
-    def forward(self, z: Tensor) -> tuple[Tensor, Tensor]:
+    def forward(self, z: Tensor,/) -> tuple[Tensor, Tensor]:
         *shape, C = z.shape
 
         with torch.no_grad():
