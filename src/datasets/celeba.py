@@ -43,7 +43,7 @@ class CelebA(Dataset):
 
                 continue
 
-            paths = list(root.rglob("*.jpg"))
+            paths = list(tqdm(root.rglob("*.jpg")))
             n = len(paths)
             assert len(paths) > 0
 
