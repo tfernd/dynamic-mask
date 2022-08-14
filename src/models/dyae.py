@@ -102,7 +102,7 @@ class DynamicAutoEncoder(pl.LightningModule):
         out = self.decode(z)
 
         loss = self.loss(data, out)
-        self.log("loss/training", loss.item())
+        self.log("training/loss", loss.item())
 
         return loss
 
@@ -133,21 +133,8 @@ class DynamicAutoEncoder(pl.LightningModule):
             loss.append(error.mean())
             std.append(error.std())
 
-        losses = {f"n={n}": l.item() for n, l in zip(ns, loss)}
-        stds = {f"n={n}": l.item() for n, l in zip(ns, std)}
-
-        # TODO fix type hinting
-        self.logger.experiment.add_scalars(  # type: ignore
-            "loss/validation",
-            losses,
-            self.current_epoch,
-        )
-
-        self.logger.experiment.add_scalars(  # type: ignore
-            "loss/validation/std",
-            losses,
-            self.current_epoch,
-        )
+            self.log(f'validation/loss/{n}', loss[-1].item())
+            self.log(f'validation/std/{n}', std[-1].item())
 
         return loss[0]
 
