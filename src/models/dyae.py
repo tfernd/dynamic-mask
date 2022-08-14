@@ -2,14 +2,13 @@ from __future__ import annotations
 from typing import Optional
 
 import torch
-import torch.nn.functional as F
 from torch import Tensor
 from torch.utils.data import Dataset, DataLoader
 
 import pytorch_lightning as pl
 
 from ..layers import PatchEncoder, PatchDecoder, MaskLatent
-from ..utils import normalize, denormalize, auto_grad
+from ..utils import  auto_grad
 
 
 class DynamicAutoEncoder(pl.LightningModule):
@@ -54,7 +53,6 @@ class DynamicAutoEncoder(pl.LightningModule):
     def encode(
         self,
         x: Tensor,
-        /,
         *,
         n: int | float = 1.0,
     ) -> tuple[Tensor, Optional[Tensor]]:
@@ -68,7 +66,7 @@ class DynamicAutoEncoder(pl.LightningModule):
         return z, mask
 
     @auto_grad
-    def decode(self, z: Tensor, /) -> Tensor:
+    def decode(self, z: Tensor) -> Tensor:
         z = z.to(self.device)
 
         z = self.mask_latent.expand(z)
@@ -81,31 +79,22 @@ class DynamicAutoEncoder(pl.LightningModule):
         return torch.optim.AdamW(self.parameters(), lr=self.lr)
 
     @auto_grad
-    def loss(self, data: Tensor, out: Tensor, /) -> Tensor:
-        """L1-loss between input and output in pixel space."""
-
+    def error(self, data: Tensor, out: Tensor) -> Tensor:
         data = data.to(self.device)
         out = out.to(self.device)
 
-        return F.l1_loss(data.float(), out.float())
+        return out.float().sub(data.float()).abs()
 
     @auto_grad
-    def fft_loss(self, data: Tensor, out: Tensor, /) -> Tensor:
-        data = data.to(self.device)
-        out = out.to(self.device)
+    def loss(self, data: Tensor, out: Tensor) -> Tensor:
+        """L1-loss between input and output in pixel space."""
 
-        fd = torch.fft.rfftn(normalize(data), dim=(1, 2))
-        fo = torch.fft.rfftn(normalize(out), dim=(1, 2))
-
-        loss = fd.sub(fo).abs().mean()
-
-        return loss
+        return self.error(data, out).mean()
 
     def training_step(
         self,
         batch: tuple[Tensor, ...],
         idx: int,
-        /,
     ) -> Tensor:
         data, *_ = batch
 
@@ -113,7 +102,6 @@ class DynamicAutoEncoder(pl.LightningModule):
         out = self.decode(z)
 
         loss = self.loss(data, out)
-        # loss = self.fft_loss(data, out)
         self.log("loss/training", loss.item())
 
         return loss
@@ -125,7 +113,7 @@ class DynamicAutoEncoder(pl.LightningModule):
         batch: tuple[Tensor, ...],
         idx: int,
     ) -> Tensor:
-        self.eval()
+        self.eval()  # TODO is this necessary?
 
         data, *_ = batch
 
@@ -137,16 +125,27 @@ class DynamicAutoEncoder(pl.LightningModule):
         assert mask is None
 
         loss: list[Tensor] = []
+        std: list[Tensor] = []
         for n in ns:
             out = self.decode(z[..., :n])
-            loss.append(self.loss(data, out))
+            error = self.error(data, out)
 
-        metric = {f"n={n}": l.item() for n, l in zip(ns, loss)}
+            loss.append(error.mean())
+            std.append(error.std())
+
+        losses = {f"n={n}": l.item() for n, l in zip(ns, loss)}
+        stds = {f"n={n}": l.item() for n, l in zip(ns, std)}
 
         # TODO fix type hinting
         self.logger.experiment.add_scalars(  # type: ignore
             "loss/validation",
-            metric,
+            losses,
+            self.current_epoch,
+        )
+
+        self.logger.experiment.add_scalars(  # type: ignore
+            "loss/validation/std",
+            losses,
             self.current_epoch,
         )
 

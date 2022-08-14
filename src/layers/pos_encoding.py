@@ -13,7 +13,6 @@ class PositionalEncoding(nn.Module):
     def __init__(
         self,
         features: int,
-        /,
         *,
         ndim: Literal[1, 2, 3] = 1,
         requires_grad: bool = False,
@@ -49,7 +48,7 @@ class PositionalEncoding(nn.Module):
                 return True
         return False
 
-    def forward(self, x: Tensor, /) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         N, *shape, C = x.shape
 
         idx = torch.stack(

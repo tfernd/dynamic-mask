@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import torch
 import torch.nn as nn
 from torch import Tensor
 
@@ -57,7 +56,7 @@ class PatchMixer(PatchBase):
         )
         self.intra_patch_mix = Block(self.emb_size, ratio=channel_ratio)
 
-    def forward(self, x: Tensor, /) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         x = self.spatial_last(x)
         x = self.extra_patch_mix(x)
         x = self.channel_last(x)
@@ -95,7 +94,7 @@ class PatchEncoder(PatchBase):
             ]
         )
 
-    def forward(self, x: Tensor, /) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         x = normalize(x)
         x = self.mix_color(x)
         x = self.to_patches(x)

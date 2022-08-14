@@ -16,7 +16,6 @@ class Block(nn.Module):
         self,
         in_channels: int,
         out_channels: Optional[int] = None,
-        /,
         *,
         ratio: float = 1,
         full: bool = True,
@@ -65,7 +64,7 @@ class Block(nn.Module):
                 nn.Linear(mid_channels, out_channels),
             )
 
-    def forward(self, x: Tensor, /) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         # affine transformation
         xn = x * self.scale + self.shift
 
@@ -85,7 +84,7 @@ class Block(nn.Module):
         )
 
 
-def average_pool(x: Tensor, /) -> Tensor:
+def average_pool(x: Tensor) -> Tensor:
     """Average pooling of 'spatial' dimensions."""
 
     B, *shape, C = x.shape
