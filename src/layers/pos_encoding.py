@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import Literal
 
 import torch
 import torch.nn as nn
@@ -14,7 +13,7 @@ class PositionalEncoding(nn.Module):
         self,
         features: int,
         *,
-        ndim: Literal[1, 2, 3] = 1,
+        ndim: int = 1,
         requires_grad: bool = False,
     ):
         super().__init__()
