@@ -8,6 +8,8 @@ from torch import Tensor
 
 
 class PositionalEncoding(nn.Module):
+    """Positional Encoding."""
+    
     def __init__(
         self,
         features: int,

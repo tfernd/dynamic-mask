@@ -1,12 +1,16 @@
 from __future__ import annotations
 from typing import Optional
 
+import math
+
 import torch
 import torch.nn as nn
 from torch import Tensor
 
 
 class MaskLatent(nn.Module):
+    """Randomly mask the latent space and possibly crop it."""
+
     masks: Tensor
 
     def __init__(
@@ -31,6 +35,8 @@ class MaskLatent(nn.Module):
         self.register_buffer("masks", masks)
 
     def mask(self, z: Tensor, /) -> tuple[Tensor, Optional[Tensor]]:
+        """Mask the latent space."""
+
         if not self.training:
             return z, None
 
@@ -46,17 +52,21 @@ class MaskLatent(nn.Module):
         self,
         z: Tensor,
         /,
-        *,
-        n: Optional[int] = None,
+        n: int | float = 1.0,
     ) -> Tensor:
-        if n is None:
-            return z
+        """Crop the latent space."""
+
+        if not isinstance(n, int):
+            assert 0 < n <= 1
+            n = math.ceil(n * self.features)
 
         assert 1 <= n <= self.features
 
         return z[..., :n]
 
     def expand(self, z: Tensor, /) -> Tensor:
+        """Expand the latent space."""
+
         *shape, C = z.shape
 
         if C == self.features:

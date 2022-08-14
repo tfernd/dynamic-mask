@@ -8,7 +8,7 @@ from torch.utils.data import Dataset, DataLoader
 
 import pytorch_lightning as pl
 
-from ..layers import PatchEncoder, PatchDecoder, MaskLatent
+from ..layers import PatchBase, PatchEncoder, PatchDecoder, MaskLatent
 from ..utils import normalize, auto_grad
 
 
@@ -22,11 +22,10 @@ class DynamicAutoEncoder(pl.LightningModule):
     def __init__(
         self,
         *,
-        num_channels: int,
+        shape: tuple[int, int, int],
         patch_size: int,
-        ratio: float = 1,
-        num_heads: int = 1,
-        head_size: Optional[int] = None,
+        channel_ratio: float = 1,
+        spatial_ratio: float = 1,
         encoder_layers: int = 1,
         decoder_layers: int = 1,
     ) -> None:
@@ -35,16 +34,20 @@ class DynamicAutoEncoder(pl.LightningModule):
         # parameters
         self.save_hyperparameters()
 
-        self.emb_size = num_channels * patch_size**2
-        self.name = f"DyAE_c{num_channels}_p{patch_size}_r{ratio}_n({num_heads}x{head_size})_N({encoder_layers}x{decoder_layers})"
+        H, W, C = shape
+        self.name = f"DyAE_s({H}x{W}x{C}-{patch_size})_r({channel_ratio}-{spatial_ratio})_n({encoder_layers}-{decoder_layers})"
 
         # layers
         self.patch_encoder = PatchEncoder(
-            num_channels, patch_size, ratio, num_heads, head_size, encoder_layers
+            shape, patch_size, channel_ratio, spatial_ratio, encoder_layers
         )
         self.patch_decoder = PatchDecoder(
-            num_channels, patch_size, ratio, num_heads, head_size, decoder_layers
+            shape, patch_size, channel_ratio, spatial_ratio, decoder_layers
         )
+
+        self.emb_size = self.patch_encoder.emb_size
+        self.patch_emb_size = self.patch_encoder.patch_emb_size
+
         self.mask_latent = MaskLatent(self.emb_size)
 
     @auto_grad
@@ -53,14 +56,14 @@ class DynamicAutoEncoder(pl.LightningModule):
         x: Tensor,
         /,
         *,
-        n: Optional[int] = None,
+        n: int | float = 1.0,
     ) -> tuple[Tensor, Optional[Tensor]]:
         x = x.to(self.device)
 
         z = self.patch_encoder(x)
 
         z, mask = self.mask_latent.mask(z)
-        z = self.mask_latent.crop(z, n=n)
+        z = self.mask_latent.crop(z, n)
 
         return z, mask
 
@@ -79,6 +82,8 @@ class DynamicAutoEncoder(pl.LightningModule):
 
     @auto_grad
     def loss(self, data: Tensor, out: Tensor, /) -> Tensor:
+        """L1-loss between input and output in pixel space."""
+
         data = data.to(self.device)
         out = out.to(self.device)
 
@@ -92,7 +97,7 @@ class DynamicAutoEncoder(pl.LightningModule):
         fd = torch.fft.rfftn(normalize(data), dim=(1, 2))
         fo = torch.fft.rfftn(normalize(out), dim=(1, 2))
 
-        loss = fd.sub(fo).abs().mean()
+        loss = fd.sub(fo).abs().log().mean()
 
         return loss
 

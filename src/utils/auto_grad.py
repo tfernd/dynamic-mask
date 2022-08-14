@@ -5,7 +5,7 @@ from functools import wraps
 import torch
 import torch.nn as nn
 
-
+# TODO add type hints for method
 def auto_grad(method):
     @wraps(method)
     def wrapper(self: nn.Module, *args, **kwargs):
