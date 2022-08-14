@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Optional
 
 from PIL import Image
 import numpy as np
@@ -19,6 +20,7 @@ class CelebA(Dataset):
         self,
         root: str | Path,
         sizes: int | tuple[int, ...] = 256,
+        cache_path: Optional[str | Path] = None,
     ) -> None:
         sizes = (sizes,) if not isinstance(sizes, tuple) else sizes
         self.sizes = sizes
@@ -26,7 +28,10 @@ class CelebA(Dataset):
         root = Path(root)
         assert root.exists()
 
-        CACHE = root / "cache"
+        if cache_path is None:
+            CACHE = root / "cache"
+        else:
+            CACHE = Path(cache_path)
 
         self.data: dict[int, Tensor] = {}
         self.mean: dict[int, Tensor] = {}
