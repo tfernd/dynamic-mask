@@ -8,7 +8,7 @@ def normalize(x: Tensor) -> Tensor:
     """Normalize a tensor from [0, 255] -> [-1, 1]."""
 
     if x.requires_grad:
-        return x.mul(2 / 255).sub(1)
+        return x.mul(2 / 255).sub(1).clamp(-1, 1)
 
     assert x.dtype == torch.uint8
 
@@ -16,9 +16,13 @@ def normalize(x: Tensor) -> Tensor:
 
 
 def denormalize(x: Tensor) -> Tensor:
-    """Denormalize a tensor from [-1, 1] -> [0, 255]."""
+    """Denormalize a tensor from [-1, 1] -> [0, 255] and quantize it."""
 
+    # retain gradients but discretize
     if x.requires_grad:
-        return x.add(1).mul(255 / 2).clamp(0, 255) 
+        x = x.add(1).mul(255 / 2).clamp(0, 255)
+        xd = x.byte()
+
+        return x + (xd - x).detach()
 
     return x.add(1).mul_(255 / 2).clamp_(0, 255).byte()

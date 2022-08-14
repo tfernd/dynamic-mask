@@ -8,8 +8,8 @@ from torch.utils.data import Dataset, DataLoader
 
 import pytorch_lightning as pl
 
-from ..layers import PatchBase, PatchEncoder, PatchDecoder, MaskLatent
-from ..utils import normalize, auto_grad
+from ..layers import PatchEncoder, PatchDecoder, MaskLatent
+from ..utils import normalize, denormalize, auto_grad
 
 
 class DynamicAutoEncoder(pl.LightningModule):
@@ -97,7 +97,7 @@ class DynamicAutoEncoder(pl.LightningModule):
         fd = torch.fft.rfftn(normalize(data), dim=(1, 2))
         fo = torch.fft.rfftn(normalize(out), dim=(1, 2))
 
-        loss = fd.sub(fo).abs().log().mean()
+        loss = fd.sub(fo).abs().mean()
 
         return loss
 
@@ -112,7 +112,8 @@ class DynamicAutoEncoder(pl.LightningModule):
         z, mask = self.encode(data)
         out = self.decode(z)
 
-        loss = self.fft_loss(data, out)
+        loss = self.loss(data, out)
+        # loss = self.fft_loss(data, out)
         self.log("loss/training", loss.item())
 
         return loss

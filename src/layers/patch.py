@@ -48,9 +48,9 @@ class PatchMixer(PatchBase):
     ):
         super().__init__(shape, patch_size, channel_ratio, spatial_ratio)
 
-        self.channels_to_patches = Rearrange("b h w e -> b e (h w)")
+        self.spatial_last = Rearrange("b h w e -> b e (h w)")
         self.extra_patch_mix = Block(self.patch_emb_size, ratio=spatial_ratio)
-        self.patches_to_channels = Rearrange(
+        self.channel_last = Rearrange(
             "b e (h w) -> b h w e",
             h=self.height_patches,
             w=self.width_patches,
@@ -58,9 +58,9 @@ class PatchMixer(PatchBase):
         self.intra_patch_mix = Block(self.emb_size, ratio=channel_ratio)
 
     def forward(self, x: Tensor, /) -> Tensor:
-        x = self.channels_to_patches(x)
+        x = self.spatial_last(x)
         x = self.extra_patch_mix(x)
-        x = self.patches_to_channels(x)
+        x = self.channel_last(x)
         x = self.intra_patch_mix(x)
 
         return x
@@ -102,7 +102,6 @@ class PatchEncoder(PatchBase):
         x = x + self.pos_enc(x)
         x = self.intra_patch_mix(x)
         x = self.extra_patch_mix(x)
-        x = torch.tanh(x)  # [-1, 1]
 
         return x
 
