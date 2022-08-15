@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Literal
+from typing import Optional
 
 from pathlib import Path
 
@@ -14,16 +14,13 @@ from torch.utils.data import Dataset
 from tqdm.autonotebook import tqdm
 
 
-Size = Literal[16, 32, 64, 128, 256]
-
-
 class CelebA(Dataset):
-    sizes: tuple[Size, ...]
+    sizes: tuple[int, ...]
 
     def __init__(
         self,
         root: str | Path,
-        sizes: Size | tuple[Size, ...] = 256,
+        sizes: int | tuple[int, ...] = 256,
         cache_path: Optional[str | Path] = None,
     ) -> None:
         sizes = (sizes,) if not isinstance(sizes, tuple) else sizes
@@ -37,9 +34,9 @@ class CelebA(Dataset):
         else:
             CACHE = Path(cache_path)
 
-        self.data: dict[Size, Tensor] = {}
-        self.mean: dict[Size, Tensor] = {}
-        self.std: dict[Size, Tensor] = {}
+        self.data: dict[int, Tensor] = {}
+        self.mean: dict[int, Tensor] = {}
+        self.std: dict[int, Tensor] = {}
 
         for size in tqdm(sizes, desc="Parsing sizes"):
             cached_file = CACHE / f"{size}.pt"
