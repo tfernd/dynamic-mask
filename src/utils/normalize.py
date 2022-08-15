@@ -4,7 +4,7 @@ import torch
 from torch import Tensor
 
 
-def normalize(x: Tensor) -> Tensor:
+def normalize(x: Tensor, /) -> Tensor:
     """Normalize a tensor from [0, 255] -> [-1, 1]."""
 
     if x.requires_grad:
@@ -12,11 +12,11 @@ def normalize(x: Tensor) -> Tensor:
 
     assert x.dtype == torch.uint8
 
-    return x.mul(2 / 255).sub_(1)
+    return x.mul(2 / 255).sub_(1).clamp_(-1, 1)
 
 
-def denormalize(x: Tensor) -> Tensor:
-    """Denormalize a tensor from [-1, 1] -> [0, 255] and quantize it."""
+def denormalize(x: Tensor, /) -> Tensor:
+    """Denormalize a tensor from [-1, 1] -> [0, 255], and retrain the gradients."""
 
     # retain gradients but discretize
     if x.requires_grad:

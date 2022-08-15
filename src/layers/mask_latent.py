@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-
+# TODO add probability
 class MaskLatent(nn.Module):
     """Randomly mask the latent space and possibly crop it."""
 
@@ -16,9 +16,7 @@ class MaskLatent(nn.Module):
     def __init__(
         self,
         features: int,
-        *,
-        # TODO add support for p
-        p: float = 0,
+        /,
     ) -> None:
         super().__init__()
 
@@ -26,14 +24,13 @@ class MaskLatent(nn.Module):
 
         # parameters
         self.features = features
-        self.p = p
 
         # layers
         masks = ~torch.eye(features + 1).cumsum(0).bool()
         masks = masks[:, 1:]
         self.register_buffer("masks", masks)
 
-    def mask(self, z: Tensor) -> tuple[Tensor, Optional[Tensor]]:
+    def mask(self, z: Tensor, /) -> tuple[Tensor, Optional[Tensor]]:
         """Mask the latent space."""
 
         if not self.training:
@@ -50,6 +47,7 @@ class MaskLatent(nn.Module):
     def crop(
         self,
         z: Tensor,
+        /,
         n: int | float = 1.0,
     ) -> Tensor:
         """Crop the latent space."""
@@ -62,7 +60,7 @@ class MaskLatent(nn.Module):
 
         return z[..., :n]
 
-    def expand(self, z: Tensor) -> Tensor:
+    def expand(self, z: Tensor, /) -> Tensor:
         """Expand the latent space."""
 
         *shape, C = z.shape

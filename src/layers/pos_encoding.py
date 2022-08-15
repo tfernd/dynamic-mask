@@ -8,13 +8,13 @@ from torch import Tensor
 
 class PositionalEncoding(nn.Module):
     """Positional Encoding."""
-    
+
     def __init__(
         self,
         features: int,
+        /,
         *,
         ndim: int = 1,
-        requires_grad: bool = False,
     ):
         super().__init__()
 
@@ -32,22 +32,23 @@ class PositionalEncoding(nn.Module):
 
         # add spatial dimensions
         shape = [1] * ndim
-        A = A.unsqueeze(1).unflatten(1, shape)
-        freq = freq.unsqueeze(1).unflatten(1, shape)
-        phase = phase.unsqueeze(1).unflatten(1, shape)
+        A = A.unsqueeze(1).unflatten(1, shape).clone()
+        freq = freq.unsqueeze(1).unflatten(1, shape).clone()
+        phase = phase.unsqueeze(1).unflatten(1, shape).clone()
 
-        self.A = Parameter(A, requires_grad=requires_grad)
-        self.freq = Parameter(freq, requires_grad=requires_grad)
-        self.phase = Parameter(phase, requires_grad=requires_grad)
+        self.A = Parameter(A)
+        self.freq = Parameter(freq)
+        self.phase = Parameter(phase)
 
     @property
     def requires_grad(self) -> bool:
         for param in self.parameters():
             if param.requires_grad:
                 return True
+
         return False
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor, /) -> Tensor:
         N, *shape, C = x.shape
 
         idx = torch.stack(
@@ -62,7 +63,6 @@ class PositionalEncoding(nn.Module):
         out = out.mean(0, keepdim=True)
 
         return out
-
 
     def __repr__(self) -> str:
         name = self.__class__.__qualname__

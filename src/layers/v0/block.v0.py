@@ -8,8 +8,6 @@ import torch.nn as nn
 from torch.nn.parameter import Parameter
 from torch import Tensor
 
-from einops.layers.torch import Reduce
-
 
 class Block(nn.Module):
     """A super-block with affine transformation, gated/squeeze-extitation activation, and skip connection."""
@@ -20,22 +18,15 @@ class Block(nn.Module):
         out_channels: Optional[int] = None,
         /,
         *,
-        ratio: float | tuple[float, float] = 1,
+        ratio: float = 1,
         full: bool = True,
     ) -> None:
         super().__init__()
 
-        ratio = ratio if isinstance(ratio, tuple) else (ratio, ratio)
-
-        assert ratio[0] > 0 and ratio[1] > 0
+        assert ratio > 0
 
         out_channels = out_channels or in_channels
-
-        max_channels = max(in_channels, out_channels)
-        mid_channels = (
-            math.ceil(ratio[0] * max_channels),
-            math.ceil(ratio[1] * max_channels),
-        )
+        mid_channels = math.ceil(ratio * max(in_channels, out_channels))
 
         # parameters
         self.in_channels = in_channels
@@ -51,17 +42,16 @@ class Block(nn.Module):
         self.shift = Parameter(torch.zeros(in_channels))
 
         self.main = nn.Sequential(
-            nn.Linear(in_channels, mid_channels[0]),
+            nn.Linear(in_channels, mid_channels),
             nn.GELU(),
-            nn.Linear(mid_channels[0], out_channels),
+            nn.Linear(mid_channels, out_channels),
         )
 
         # squeeze-excitation / gated activation
         self.gate = nn.Sequential(
-            nn.Linear(in_channels, mid_channels[1]),
-            Reduce("b h w c -> b 1 1 c", "mean"),  # TODO check position
+            nn.Linear(in_channels, mid_channels),
             nn.GELU(),
-            nn.Linear(mid_channels[1], out_channels),
+            nn.Linear(mid_channels, out_channels),
             nn.Sigmoid(),
         )
 
@@ -71,28 +61,37 @@ class Block(nn.Module):
             self.skip = nn.Linear(in_channels, out_channels)
         else:
             self.skip = nn.Sequential(
-                nn.Linear(in_channels, mid_channels[0]),
-                nn.Linear(mid_channels[0], out_channels),
+                nn.Linear(in_channels, mid_channels),
+                nn.Linear(mid_channels, out_channels),
             )
 
     def forward(self, x: Tensor, /) -> Tensor:
         # affine transformation
         xn = x * self.scale + self.shift
 
-        return self.skip(x) + self.main(xn) * self.gate(xn)
+        xmean = average_pool(xn)
+
+        return self.skip(x) + self.main(xn) * self.gate(xmean)
 
     def __repr__(self) -> str:
         name = self.__class__.__qualname__
 
-        if self.mid_channels[0] == self.mid_channels[1]:
-            mid_channels = self.mid_channels[0]
-        else:
-            mid_channels = f"{self.mid_channels[0]}/{self.mid_channels[1]}"
-
         return (
             f"{name}("
             f"{self.in_channels} -> "
-            f"{mid_channels} -> "
+            f"{self.mid_channels} -> "
             f"{self.out_channels}"
             ")"
         )
+
+
+def average_pool(x: Tensor, /) -> Tensor:
+    """Average pooling of 'spatial' dimensions."""
+
+    B, *shape, C = x.shape
+
+    sdims = len(shape)
+    if sdims == 0:
+        return x
+
+    return x.mean(dim=tuple(range(1, sdims + 1)), keepdim=True)

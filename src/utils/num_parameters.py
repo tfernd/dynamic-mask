@@ -3,7 +3,8 @@ from __future__ import annotations
 import torch.nn as nn
 from torch.nn.parameter import Parameter
 
-def num_parameters(module: nn.Module | Parameter) -> int:
+
+def num_parameters(module: nn.Module | Parameter, /) -> int:
     """The number of parameters in a module."""
 
     if isinstance(module, Parameter):
