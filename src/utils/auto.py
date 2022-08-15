@@ -10,7 +10,7 @@ import pytorch_lightning as pl
 
 
 # TODO add type hints for method
-def auto_grad(method,/):
+def auto_grad(method):
     @wraps(method)
     def wrapper(self: nn.Module, *args, **kwargs):
         with torch.set_grad_enabled(self.training):
@@ -20,7 +20,7 @@ def auto_grad(method,/):
 
 
 # TODO add type hints for method
-def auto_device(method,/):
+def auto_device(method):
     @wraps(method)
     def wrapper(self: pl.LightningModule, *args, **kwargs):
         args = tuple(to_device(v, self.device) for v in args)
@@ -31,7 +31,7 @@ def auto_device(method,/):
     return wrapper
 
 
-def to_device(x, /,device: str | torch.device):
+def to_device(x,  device: str | torch.device):
     if isinstance(x, Tensor):
         return x.to(device)
 

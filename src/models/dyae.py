@@ -55,7 +55,6 @@ class DynamicAutoEncoder(pl.LightningModule):
     def encode(
         self,
         x: Tensor,
-        /,
         *,
         n: int | float = 1.0,
     ) -> tuple[Tensor, Optional[Tensor]]:
@@ -69,7 +68,7 @@ class DynamicAutoEncoder(pl.LightningModule):
 
     @auto_grad
     @auto_device
-    def decode(self, z: Tensor, /) -> Tensor:
+    def decode(self, z: Tensor) -> Tensor:
         z = self.mask_latent.expand(z)
 
         out = self.patch_decoder(z)
@@ -82,17 +81,17 @@ class DynamicAutoEncoder(pl.LightningModule):
 
     @auto_grad
     @auto_device
-    def loss(self, data: Tensor, out: Tensor, /) -> Tensor:
+    def loss(self, data: Tensor, out: Tensor) -> Tensor:
         return F.l1_loss(data.float(), out.float())
 
     @auto_device
     @torch.no_grad()
-    def psnr(self, data: Tensor, out: Tensor, /) -> Tensor:
+    def psnr(self, data: Tensor, out: Tensor) -> Tensor:
         return self.psnr_from_loss(self.loss(data, out))
 
     @auto_device
     @torch.no_grad()
-    def psnr_from_loss(self, loss: Tensor, /) -> Tensor:
+    def psnr_from_loss(self, loss: Tensor) -> Tensor:
         return 10 * torch.log10(255**2 / loss)
 
     @auto_device
@@ -100,7 +99,6 @@ class DynamicAutoEncoder(pl.LightningModule):
         self,
         batch: tuple[Tensor, ...],
         idx: int,
-        /,
     ) -> Tensor:
         loss = torch.tensor(0.0, device=self.device)
         for data in batch:
@@ -120,7 +118,6 @@ class DynamicAutoEncoder(pl.LightningModule):
     def add_dataset(
         self,
         dataset: Dataset[tuple[Tensor, ...]],
-        /,
     ) -> None:
         self.dataset = dataset
 

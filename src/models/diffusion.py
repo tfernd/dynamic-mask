@@ -66,11 +66,11 @@ class Diffusion(pl.LightningModule):
 
     @auto_grad
     @auto_device
-    def forward(self, noisy: Tensor, /, std: Tensor) -> Tensor:
+    def forward(self, noisy: Tensor,  std: Tensor) -> Tensor:
         return self.mix(noisy + self.std_emb(std) + self.pos_enc(noisy))
 
     @auto_device
-    def training_step(self, batch: tuple[Tensor, ...], idx: int, /) -> Tensor:
+    def training_step(self, batch: tuple[Tensor, ...], idx: int) -> Tensor:
         x, *_ = batch
 
         B, H, W, C = x.shape

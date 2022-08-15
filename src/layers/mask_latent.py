@@ -16,7 +16,6 @@ class MaskLatent(nn.Module):
     def __init__(
         self,
         features: int,
-        /,
     ) -> None:
         super().__init__()
 
@@ -30,7 +29,7 @@ class MaskLatent(nn.Module):
         masks = masks[:, 1:]
         self.register_buffer("masks", masks)
 
-    def mask(self, z: Tensor, /) -> tuple[Tensor, Optional[Tensor]]:
+    def mask(self, z: Tensor) -> tuple[Tensor, Optional[Tensor]]:
         """Mask the latent space."""
 
         if not self.training:
@@ -47,7 +46,6 @@ class MaskLatent(nn.Module):
     def crop(
         self,
         z: Tensor,
-        /,
         n: int | float = 1.0,
     ) -> Tensor:
         """Crop the latent space."""
@@ -60,7 +58,7 @@ class MaskLatent(nn.Module):
 
         return z[..., :n]
 
-    def expand(self, z: Tensor, /) -> Tensor:
+    def expand(self, z: Tensor) -> Tensor:
         """Expand the latent space."""
 
         *shape, C = z.shape

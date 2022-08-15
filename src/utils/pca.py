@@ -7,7 +7,6 @@ from torch import Tensor
 
 def PCA(
     data: Tensor,
-    /,
     features: Optional[int] = 2,
 ) -> Tensor:
     """Principal Component Analysis (PCA)."""

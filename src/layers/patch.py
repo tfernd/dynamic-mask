@@ -44,7 +44,7 @@ class PatchEncoder(nn.Module):
             *[Block(emb_size, ratio=ratio) for _ in range(num_layers)]
         )
 
-    def forward(self, x: Tensor, /) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         x = self.mix_color(x)
         x = self.to_patches(x)
         x = self.pre_mix(x) + self.pos_enc(x)
@@ -87,7 +87,7 @@ class PatchDecoder(nn.Module):
         scale = torch.linspace(0, -5, emb_size).exp().view(1, 1, 1, -1)
         self.scale = Parameter(scale)
 
-    def forward(self, z: Tensor, /) -> Tensor:
+    def forward(self, z: Tensor) -> Tensor:
         z = self.patches_unmix(z * self.scale)
         z = self.from_patches(z)
         z = self.unmix_color(z)

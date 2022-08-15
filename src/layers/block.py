@@ -18,7 +18,6 @@ class Block(nn.Module):
         self,
         in_channels: int,
         out_channels: Optional[int] = None,
-        /,
         *,
         ratio: float | tuple[float, float] = 1,
         full: bool = True,
@@ -75,7 +74,7 @@ class Block(nn.Module):
                 nn.Linear(mid_channels[0], out_channels),
             )
 
-    def forward(self, x: Tensor, /) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         # affine transformation
         xn = x * self.scale + self.shift
 

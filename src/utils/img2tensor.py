@@ -9,7 +9,6 @@ from torch import Tensor
 
 def img2tensor(
     img: Image,
-    /,
     *,
     channel_first: bool = False,
 ) -> Tensor:
