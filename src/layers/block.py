@@ -59,7 +59,7 @@ class Block(nn.Module):
         # squeeze-excitation / gated activation
         self.gate = nn.Sequential(
             nn.Linear(in_channels, mid_channels[1]),
-            Reduce("b h w c -> b 1 1 c", "mean"),  # TODO check position
+            Reduce("b h w c -> b 1 1 c", "mean"),
             nn.GELU(),
             nn.Linear(mid_channels[1], out_channels),
             nn.Sigmoid(),

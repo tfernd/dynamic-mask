@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import torch
 import torch.nn as nn
+from torch.nn.parameter import Parameter
 from torch import Tensor
 
 from einops.layers.torch import Rearrange
@@ -36,7 +38,7 @@ class PatchEncoder(nn.Module):
             hp=patch_size,
             wp=patch_size,
         )
-        self.patches_pre_mix = Block(emb_size, ratio=ratio)
+        self.pre_mix = Block(emb_size)
         self.pos_enc = PositionalEncoding(emb_size, ndim=2)
         self.patches_mix = nn.Sequential(
             *[Block(emb_size, ratio=ratio) for _ in range(num_layers)]
@@ -45,8 +47,7 @@ class PatchEncoder(nn.Module):
     def forward(self, x: Tensor, /) -> Tensor:
         x = self.mix_color(x)
         x = self.to_patches(x)
-        x = self.patches_pre_mix(x)
-        x = x + self.pos_enc(x)
+        x = self.pre_mix(x) + self.pos_enc(x)
         x = self.patches_mix(x)
 
         return x
@@ -83,8 +84,11 @@ class PatchDecoder(nn.Module):
         )
         self.unmix_color = Block(num_channels)
 
+        scale = torch.linspace(0, -5, emb_size).exp().view(1, 1, 1, -1)
+        self.scale = Parameter(scale)
+
     def forward(self, z: Tensor, /) -> Tensor:
-        z = self.patches_unmix(z)
+        z = self.patches_unmix(z * self.scale)
         z = self.from_patches(z)
         z = self.unmix_color(z)
 

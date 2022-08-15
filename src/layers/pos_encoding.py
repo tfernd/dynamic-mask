@@ -15,6 +15,7 @@ class PositionalEncoding(nn.Module):
         /,
         *,
         ndim: int = 1,
+        requires_grad: bool = False,
     ):
         super().__init__()
 
@@ -36,9 +37,9 @@ class PositionalEncoding(nn.Module):
         freq = freq.unsqueeze(1).unflatten(1, shape).clone()
         phase = phase.unsqueeze(1).unflatten(1, shape).clone()
 
-        self.A = Parameter(A)
-        self.freq = Parameter(freq)
-        self.phase = Parameter(phase)
+        self.A = Parameter(A,requires_grad)
+        self.freq = Parameter(freq,requires_grad)
+        self.phase = Parameter(phase,requires_grad)
 
     @property
     def requires_grad(self) -> bool:

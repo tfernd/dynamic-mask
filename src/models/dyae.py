@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import Optional
 
+import random
+
 import torch
 import torch.nn.functional as F
 from torch import Tensor
@@ -43,13 +45,9 @@ class DynamicAutoEncoder(pl.LightningModule):
         self.name = f"DyAE_c{num_channels}_p{patch_size}_r{ratio}_n(e{encoder_layers}-d{decoder_layers})"
 
         # layers
-        self.patch_encoder = PatchEncoder(
-            num_channels, patch_size, ratio, encoder_layers
-        )
-        self.patch_decoder = PatchDecoder(
-            num_channels, patch_size, ratio, decoder_layers
-        )
-
+        args = (num_channels, patch_size, ratio)
+        self.patch_encoder = PatchEncoder(*args, encoder_layers)
+        self.patch_decoder = PatchDecoder(*args, decoder_layers)
         self.mask_latent = MaskLatent(emb_size)
 
     @auto_grad
@@ -61,8 +59,8 @@ class DynamicAutoEncoder(pl.LightningModule):
         *,
         n: int | float = 1.0,
     ) -> tuple[Tensor, Optional[Tensor]]:
-        x = normalize(x)
-        z = self.patch_encoder.forward(x)
+        xn = normalize(x)
+        z = self.patch_encoder(xn)
 
         z, mask = self.mask_latent.mask(z)
         z = self.mask_latent.crop(z, n)
@@ -104,12 +102,14 @@ class DynamicAutoEncoder(pl.LightningModule):
         idx: int,
         /,
     ) -> Tensor:
-        data, *_ = batch
+        loss = torch.tensor(0.0, device=self.device)
+        for data in batch:
+            z, mask = self.encode(data)
+            out = self.decode(z)
 
-        z, mask = self.encode(data)
-        out = self.decode(z)
+            loss += self.loss(data, out)
+        loss /= len(batch)
 
-        loss = self.loss(data, out)
         self.log("training/loss", loss)
 
         psnr = self.psnr_from_loss(loss)
