@@ -1,9 +1,7 @@
-#%%
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
-from torch.nn.parameter import Parameter
 from torch import Tensor
 
 
@@ -31,9 +29,9 @@ class Normalizer(nn.Module):
             std = x.std(dim=(0, 2, 3), keepdim=True)
 
             self.mean *= self.beta
-            self.mean += (1 - self.beta) * mean
-
             self.std *= self.beta
+
+            self.mean += (1 - self.beta) * mean
             self.std += (1 - self.beta) * std
         else:
             mean = self.mean

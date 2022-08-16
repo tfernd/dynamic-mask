@@ -16,11 +16,43 @@ from tqdm.autonotebook import tqdm
 
 from ..utils import img2tensor
 
-
 SIZE = 256
 
 
 class CelebA(Dataset):
+    def __init__(
+        self,
+        root: str | Path,
+        *,
+        size: int = SIZE,
+    ) -> None:
+        assert size <= SIZE
+        self.size = size
+
+        root = Path(root)
+
+        self.paths = list(root.rglob("*.jpg"))
+        assert len(self.paths) > 0
+
+    def __len__(self) -> int:
+        return len(self.paths)
+
+    def __getitem__(self, idx: int) -> Tensor:
+        path = self.paths[idx]
+        img = Image.open(path).convert("RGB")
+        
+        if self.size != SIZE:
+            img = img.resize((self.size, self.size), resample=Image.BICUBIC)
+
+        return img2tensor(img, channel_first=True)
+
+    def __repr__(self) -> str:
+        name = self.__class__.__qualname__
+
+        return f"{name}(size={self.size})"
+
+
+class CelebACached(Dataset):
     data: Tensor
     mean: Tensor
     std: Tensor
@@ -49,13 +81,7 @@ class CelebA(Dataset):
             self.mean = obj["mean"]
             self.std = obj["std"]
         else:
-            paths = list(
-                tqdm(
-                    root.rglob("*.jpg"),
-                    desc="Getting all files",
-                    leave=False,
-                )
-            )
+            paths = list(root.rglob("*.jpg"))
             n = len(paths)
             assert len(paths) > 0
 
