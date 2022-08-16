@@ -1,3 +1,4 @@
+#%%
 from __future__ import annotations
 from typing import Optional
 
@@ -16,7 +17,11 @@ from einops import rearrange
 
 from tqdm.autonotebook import tqdm
 
-# TODO use img2tensor from utils
+
+import sys
+
+sys.path.append("../../")
+from dynamic.utils import img2tensor
 
 
 class CelebA(Dataset):
@@ -58,24 +63,23 @@ class CelebA(Dataset):
             n = len(paths)
             assert len(paths) > 0
 
-            data_arr: list[Tensor] = []
+            # pre-allocate memory
+            self.data = torch.empty((n, 3, 256, 256), dtype=torch.uint8)
+
+            # mean and std helper tensors
             x, x2 = torch.zeros(2, 3).double()
 
-            for path in tqdm(paths, desc="Opening images"):
+            for i, path in enumerate(tqdm(paths, desc="Opening images")):
                 img = Image.open(path).convert("RGB")
 
-                d = np.asarray(img)
-                d = torch.from_numpy(d).byte()
-                d = rearrange(d, "h w c -> c h w")
-
-                data_arr.append(d)
+                d = img2tensor(img, channel_first=True)
+                self.data[i] = d
 
                 # statistics
                 d = d.double()  # high precision
                 x += d.mean(dim=(1, 2)).div(n)
                 x2 += d.pow(2).mean(dim=(1, 2)).div(n)
 
-            self.data = torch.stack(data_arr)
             self.mean = x.float()
 
             B, C, H, W = self.data.shape
@@ -145,4 +149,4 @@ if __name__ == "__main__":
     MAIN = HERE.parent.parent
 
     # pre-cache
-    self = CelebA(MAIN / "datasets" / "CelebA")
+    ds = CelebA(MAIN / "datasets" / "CelebA")
