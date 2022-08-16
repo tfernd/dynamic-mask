@@ -73,8 +73,11 @@ class CelebA(Dataset):
 
                 # statistics
                 d = d.double()  # high precision
+                
                 x += d.mean(dim=(1, 2)).div(n)
                 x2 += d.pow(2).mean(dim=(1, 2)).div(n)
+
+                del d
 
             self.mean = x.float()
 

@@ -25,4 +25,4 @@ def img2tensor(
     if channel_first:
         data = data.permute(2, 0, 1)
 
-    return data
+    return data.contiguous()
