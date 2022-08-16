@@ -18,7 +18,7 @@ from ..utils import img2tensor
 
 SIZE = 256
 
-
+# TODO add multiprocessing
 class CelebA(Dataset):
     def __init__(
         self,
@@ -40,7 +40,7 @@ class CelebA(Dataset):
     def __getitem__(self, idx: int) -> Tensor:
         path = self.paths[idx]
         img = Image.open(path).convert("RGB")
-        
+
         if self.size != SIZE:
             img = img.resize((self.size, self.size), resample=Image.BICUBIC)
 
@@ -124,9 +124,7 @@ class CelebACached(Dataset):
     def __getitem__(self, idx: int | list[int] | Tensor | slice) -> Tensor:
         # add batch dimension
         if isinstance(idx, int):
-            idx = [
-                idx,
-            ]
+            idx = [idx]
 
         data = self.data[idx]
 

@@ -3,18 +3,11 @@ from typing import Optional
 
 import torch
 import torch.nn.functional as F
-from torch.nn.parameter import Parameter
 from torch import Tensor
 
 import pytorch_lightning as pl
 
-from ..layers import (
-    PatchEncoder,
-    PatchDecoder,
-    MaskLatent,
-    Normalizer,
-    VGGPerceptualLoss,
-)
+from ..layers import PatchEncoder, PatchDecoder, MaskLatent, VectorQuantize
 from ..utils import auto_grad, auto_device, normalize, denormalize, num_parameters
 
 
@@ -32,7 +25,7 @@ class DynamicAutoEncoder(pl.LightningModule):
         ratio: float = 1,
         encoder_layers: int = 1,
         decoder_layers: int = 1,
-        beta: float = 1,  # TODO make it optional to add VGG-loss
+        code: Optional[int] = None,
     ) -> None:
         super().__init__()
 
@@ -45,10 +38,9 @@ class DynamicAutoEncoder(pl.LightningModule):
         self.ratio = ratio
         self.encoder_layers = encoder_layers
         self.decoder_layers = decoder_layers
-        self.beta = beta
+        self.code = code
 
         self.emb_size = emb_size = num_channels * patch_size**2
-
 
         # layers
         args = (patch_size, kernel_size, num_channels, ratio)
@@ -56,17 +48,10 @@ class DynamicAutoEncoder(pl.LightningModule):
         self.patch_encoder = PatchEncoder(*args, encoder_layers)
         self.patch_decoder = PatchDecoder(*args, decoder_layers)
         self.mask_latent = MaskLatent(emb_size)
-        self.normalizer = Normalizer(emb_size)
-
-        # TODO make into a layer
-        self.rate = Parameter(torch.tensor(3.0))
-        idx = torch.linspace(0, -1, emb_size).view(1, -1, 1, 1)
-        self.register_buffer("idx", idx)
+        self.quantize = VectorQuantize(emb_size, code) if code else None
 
         params = num_parameters(self)
-        self.name = f"DyAE(p{patch_size}_k{kernel_size}_c{num_channels}_r{ratio}_e{encoder_layers}_d{decoder_layers})-{params:,}"
-
-        self.vgg_loss = VGGPerceptualLoss()
+        self.name = f"DyAE(p{patch_size}_k{kernel_size}_c{num_channels}_r{ratio}_e{encoder_layers}_d{decoder_layers}_c{code})-{params:,}"
 
     @auto_grad
     @auto_device
@@ -78,20 +63,21 @@ class DynamicAutoEncoder(pl.LightningModule):
     ) -> tuple[Tensor, Optional[Tensor]]:
         xn = normalize(x)
         z = self.patch_encoder(xn)
-        z = self.normalizer(z)
 
-        z, mask = self.mask_latent(z)
-        z = self.mask_latent.crop(z, n)
+        if self.quantize is not None:
+            z, idx = self.quantize.forward(z)
+            mask = None
+        else:
+            z, mask = self.mask_latent(z)
+            z = self.mask_latent.crop(z, n)
 
         return z, mask
 
     @auto_grad
     @auto_device
     def decode(self, z: Tensor) -> Tensor:
-        z = self.mask_latent.expand(z)
-
-        scale = self.idx.mul(self.rate.clamp(1, 8)).exp()
-        z = z * scale
+        if self.quantize is None:
+            z = self.mask_latent.expand(z)
 
         out = self.patch_decoder(z)
         out = denormalize(out)
@@ -129,10 +115,7 @@ class DynamicAutoEncoder(pl.LightningModule):
         loss = self.loss(data, out)
         self.log("training/loss", loss)
 
-        vgg_loss = self.vgg_loss(out, data)
-        self.log("training/vgg_loss", vgg_loss)
-
         psnr = self.psnr_from_loss(loss.detach())
         self.log("training/psnr", psnr, prog_bar=True)
 
-        return loss + vgg_loss * self.beta
+        return loss

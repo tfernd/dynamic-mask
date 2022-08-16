@@ -9,7 +9,7 @@ from torch import Tensor
 
 from einops.layers.torch import Rearrange
 
-# TODO add probability
+
 class MaskLatent(nn.Module):
     """Randomly mask the latent space and possibly crop it."""
 

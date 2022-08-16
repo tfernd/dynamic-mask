@@ -13,7 +13,7 @@ from torchvision.models import VGG16_Weights
 class VGGPerceptualLoss(torch.nn.Module):
     def __init__(
         self,
-        resize: bool = True,
+        resize: bool = False,
     ):
         super().__init__()
 

@@ -51,9 +51,7 @@ class ConvBlock(nn.Module):
         convk = partial(nn.Conv2d, kernel_size=kernel_size, padding=kernel_size // 2)
         conv1 = partial(nn.Conv2d, kernel_size=1)
 
-        # TODO where to put?
-        # norm = partial(nn.GroupNorm, 1) # ?
-        # norm = nn.BatchNorm2d # ?
+        # TODO Add normalization?
 
         ## layers
         # affine transformation
@@ -93,7 +91,7 @@ class ConvBlock(nn.Module):
     def __repr__(self) -> str:
         name = self.__class__.__qualname__
 
-        return (
+        out = (
             f"{name}("
             f"{self.in_channels} -> "
             f"{self.mid_channels} -> "
@@ -101,3 +99,5 @@ class ConvBlock(nn.Module):
             f"kernel_size={self.kernel_size}"
             ")"
         )
+
+        return out
