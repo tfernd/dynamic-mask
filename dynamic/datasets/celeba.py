@@ -24,6 +24,9 @@ sys.path.append("../../")
 from dynamic.utils import img2tensor
 
 
+SIZE = 256
+
+
 class CelebA(Dataset):
     data: Tensor
     mean: Tensor
@@ -35,10 +38,10 @@ class CelebA(Dataset):
         self,
         root: str | Path,
         *,
-        size: int = 256,
+        size: int = SIZE,
         cache_path: Optional[str | Path] = None,
     ) -> None:
-        assert size <= 256
+        assert size <= SIZE
         self.size = size
 
         root = Path(root)
@@ -64,7 +67,7 @@ class CelebA(Dataset):
             assert len(paths) > 0
 
             # pre-allocate memory
-            self.data = torch.empty((n, 3, 256, 256), dtype=torch.uint8)
+            self.data = torch.empty((n, 3, SIZE, SIZE), dtype=torch.uint8)
 
             # mean and std helper tensors
             x, x2 = torch.zeros(2, 3).double()
@@ -82,8 +85,7 @@ class CelebA(Dataset):
 
             self.mean = x.float()
 
-            B, C, H, W = self.data.shape
-            N = B * H * W
+            N = self.data.size(0) * SIZE**2
             # correction factor for unbiased variance
             gamma = math.sqrt(N / (N - 1))
 
@@ -106,7 +108,7 @@ class CelebA(Dataset):
 
         data = self.data[idx]
 
-        if self.size != 256:
+        if self.size != SIZE:
             size = (self.size, self.size)
             data = F.interpolate(data.float(), size, mode="bicubic")
             data = data.clamp_(0, 255).byte()
