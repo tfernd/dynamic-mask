@@ -15,7 +15,7 @@ def img2tensor(
     """Convert a PIL image to a pytorch Tensor."""
 
     data = np.asarray(img)
-    data = torch.from_numpy(data).clone()
+    data = torch.from_numpy(data.copy())
     assert data.dtype == torch.uint8
 
     # black and white images are converted to 3 channels
