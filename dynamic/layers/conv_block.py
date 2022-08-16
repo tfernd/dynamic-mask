@@ -52,7 +52,7 @@ class ConvBlock(nn.Module):
         conv1 = partial(nn.Conv2d, kernel_size=1)
 
         # TODO where to put?
-        norm = partial(nn.GroupNorm, 1)
+        # norm = partial(nn.GroupNorm, 1) # ?
         # norm = nn.BatchNorm2d # ?
 
         ## layers
@@ -61,20 +61,16 @@ class ConvBlock(nn.Module):
         self.shift = Parameter(torch.zeros(1, in_channels, 1, 1))
 
         self.main = nn.Sequential(
-            norm(in_channels),
             convk(in_channels, mid_channels),
             nn.GELU(),
-            norm(mid_channels),
             convk(mid_channels, out_channels),
         )
 
         # squeeze-excitation / gated activation
         self.gate = nn.Sequential(
-            norm(in_channels),
             conv1(in_channels, mid_channels),
             Reduce("b c h w -> b c 1 1", "mean"),
             nn.GELU(),
-            norm(mid_channels),
             conv1(mid_channels, out_channels),
             nn.Sigmoid(),
         )

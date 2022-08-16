@@ -3,16 +3,19 @@ from typing import Optional
 
 import torch
 import torch.nn.functional as F
+from torch.nn.parameter import Parameter
 from torch import Tensor
 
 import pytorch_lightning as pl
 
-from ..layers import PatchEncoder, PatchDecoder, MaskLatent
+from ..layers import PatchEncoder, PatchDecoder, MaskLatent, Normalizer
 from ..utils import auto_grad, auto_device, normalize, denormalize
 
 
 class DynamicAutoEncoder(pl.LightningModule):
     lr: float = 1e-4
+
+    idx: Tensor
 
     def __init__(
         self,
@@ -46,6 +49,12 @@ class DynamicAutoEncoder(pl.LightningModule):
         self.patch_encoder = PatchEncoder(*args, encoder_layers)
         self.patch_decoder = PatchDecoder(*args, decoder_layers)
         self.mask_latent = MaskLatent(emb_size)
+        self.normalizer = Normalizer(emb_size)
+
+        # TODO make into a layer
+        self.rate = Parameter(torch.tensor(3.0))
+        idx = torch.linspace(0, -1, emb_size).view(1, -1, 1, 1)
+        self.register_buffer("idx", idx)
 
     @auto_grad
     @auto_device
@@ -57,7 +66,7 @@ class DynamicAutoEncoder(pl.LightningModule):
     ) -> tuple[Tensor, Optional[Tensor]]:
         xn = normalize(x)
         z = self.patch_encoder(xn)
-        # TODO add normalizer layer
+        z = self.normalizer(z)
 
         z, mask = self.mask_latent(z)
         z = self.mask_latent.crop(z, n)
@@ -68,7 +77,9 @@ class DynamicAutoEncoder(pl.LightningModule):
     @auto_device
     def decode(self, z: Tensor) -> Tensor:
         z = self.mask_latent.expand(z)
-        # TODO add exponential scale layer
+
+        scale = self.idx.mul(self.rate.clamp(1, 8)).exp()
+        z = z * scale
 
         out = self.patch_decoder(z)
         out = denormalize(out)
