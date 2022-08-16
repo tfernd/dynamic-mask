@@ -15,7 +15,7 @@ from ..layers import (
     Normalizer,
     VGGPerceptualLoss,
 )
-from ..utils import auto_grad, auto_device, normalize, denormalize
+from ..utils import auto_grad, auto_device, normalize, denormalize, num_parameters
 
 
 class DynamicAutoEncoder(pl.LightningModule):
@@ -49,7 +49,6 @@ class DynamicAutoEncoder(pl.LightningModule):
 
         self.emb_size = emb_size = num_channels * patch_size**2
 
-        self.name = f"DyAE_p{patch_size}_k{kernel_size}_c{num_channels}_r{ratio}_e{encoder_layers}_d{decoder_layers}"
 
         # layers
         args = (patch_size, kernel_size, num_channels, ratio)
@@ -63,6 +62,9 @@ class DynamicAutoEncoder(pl.LightningModule):
         self.rate = Parameter(torch.tensor(3.0))
         idx = torch.linspace(0, -1, emb_size).view(1, -1, 1, 1)
         self.register_buffer("idx", idx)
+
+        params = num_parameters(self)
+        self.name = f"DyAE(p{patch_size}_k{kernel_size}_c{num_channels}_r{ratio}_e{encoder_layers}_d{decoder_layers})-{params:,}"
 
         self.vgg_loss = VGGPerceptualLoss()
 
