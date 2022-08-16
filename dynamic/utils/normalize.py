@@ -12,6 +12,7 @@ def normalize(x: Tensor) -> Tensor:
 
     assert x.dtype == torch.uint8
 
+    # TODO check speed!
     return x.mul(2 / 255).sub_(1).clamp_(-1, 1)
 
 
@@ -25,4 +26,5 @@ def denormalize(x: Tensor) -> Tensor:
 
         return x + (xd - x).detach()
 
+    # TODO check speed!
     return x.add(1).mul_(255 / 2).clamp_(0, 255).byte()

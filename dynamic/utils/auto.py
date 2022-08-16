@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Any
 
 from functools import wraps
 
@@ -11,6 +12,8 @@ import pytorch_lightning as pl
 
 # TODO add type hints for method
 def auto_grad(method):
+    """Automatically determine whether to use autograd or not."""
+
     @wraps(method)
     def wrapper(self: nn.Module, *args, **kwargs):
         with torch.set_grad_enabled(self.training):
@@ -21,17 +24,24 @@ def auto_grad(method):
 
 # TODO add type hints for method
 def auto_device(method):
+    """Automatically send args and kwargs to the correct device."""
+
     @wraps(method)
     def wrapper(self: pl.LightningModule, *args, **kwargs):
         args = tuple(to_device(v, self.device) for v in args)
-        kwargs = {k: to_device(v, self.device) for k, v in kwargs.items()}
+        kwargs = {k: to_device(v, self.device) for (k, v) in kwargs.items()}
 
         return method(self, *args, **kwargs)
 
     return wrapper
 
 
-def to_device(x, device: str | torch.device):
+def to_device(
+    x: Tensor | tuple[Tensor | Any, ...] | Any,
+    device: str | torch.device,
+):
+    """Send input to the correct device."""
+
     if isinstance(x, Tensor):
         return x.to(device)
 

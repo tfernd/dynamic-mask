@@ -5,5 +5,7 @@ import torch
 
 
 def clear_cuda():
+    """Clear CUDA memory."""
+
     torch.cuda.empty_cache()
     gc.collect()

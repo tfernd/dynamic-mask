@@ -14,9 +14,7 @@ from einops.layers.torch import Reduce
 
 
 class ConvBlock(nn.Module):
-    """A super convolutional block that uses a
-    gated activation and a squeeze-excitation layer.
-    """
+    """A convolutional block that uses a squeeze-excitation layer."""
 
     def __init__(
         self,
@@ -55,7 +53,7 @@ class ConvBlock(nn.Module):
 
         # TODO where to put?
         norm = partial(nn.GroupNorm, 1)
-        # norm = nn.BatchNorm2d
+        # norm = nn.BatchNorm2d # ?
 
         ## layers
         # affine transformation

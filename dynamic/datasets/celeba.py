@@ -16,6 +16,8 @@ from einops import rearrange
 
 from tqdm.autonotebook import tqdm
 
+# TODO use img2tensor from utils
+
 
 class CelebA(Dataset):
     data: Tensor
@@ -27,6 +29,7 @@ class CelebA(Dataset):
     def __init__(
         self,
         root: str | Path,
+        *,
         size: int = 256,
         cache_path: Optional[str | Path] = None,
     ) -> None:
@@ -109,8 +112,10 @@ class CelebA(Dataset):
     def __len__(self) -> int:
         return len(self.data)
 
+    # TODO rename?
     def batch(
         self,
+        *,
         batch_size: int = 1,
         steps: int = 1,
         sizes: Optional[tuple[int, int, int]] = None,
@@ -128,10 +133,6 @@ class CelebA(Dataset):
             self.size = prev_size
 
             yield data
-
-    @property
-    def shape(self) -> tuple[int, int, int, int]:
-        return self.data.shape
 
     def __repr__(self) -> str:
         name = self.__class__.__qualname__

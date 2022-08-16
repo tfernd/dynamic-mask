@@ -4,7 +4,6 @@ from typing import Optional
 import torch
 import torch.nn.functional as F
 from torch import Tensor
-from torch.utils.data import Dataset, DataLoader
 
 import pytorch_lightning as pl
 
@@ -108,6 +107,6 @@ class DynamicAutoEncoder(pl.LightningModule):
         self.log("training/loss", loss)
 
         psnr = self.psnr_from_loss(loss.detach())
-        self.log("training/psnr", psnr)
+        self.log("training/psnr", psnr, prog_bar=True)
 
         return loss
