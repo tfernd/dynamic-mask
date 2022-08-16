@@ -1,4 +1,3 @@
-from .block import Block
+from .conv_block import ConvBlock
 from .patch import PatchEncoder, PatchDecoder
 from .mask_latent import MaskLatent
-from .pos_encoding import PositionalEncoding

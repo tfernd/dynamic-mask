@@ -7,16 +7,15 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+from einops.layers.torch import Rearrange
+
 # TODO add probability
 class MaskLatent(nn.Module):
     """Randomly mask the latent space and possibly crop it."""
 
     masks: Tensor
 
-    def __init__(
-        self,
-        features: int,
-    ) -> None:
+    def __init__(self, features: int) -> None:
         super().__init__()
 
         assert features >= 1
@@ -29,16 +28,18 @@ class MaskLatent(nn.Module):
         masks = masks[:, 1:]
         self.register_buffer("masks", masks)
 
-    def mask(self, z: Tensor) -> tuple[Tensor, Optional[Tensor]]:
+        self.rearrange = Rearrange("b h w c -> b c h w")
+
+    def forward(self, z: Tensor) -> tuple[Tensor, Optional[Tensor]]:
         """Mask the latent space."""
 
         if not self.training:
             return z, None
 
-        *shape, C = z.shape
-        idx = torch.randint(0, self.masks.size(0), shape, device=z.device)
+        B, C, H, W = z.shape
 
-        mask = self.masks[idx]
+        idx = torch.randint(0, self.masks.size(0), (B, H, W), device=z.device)
+        mask = self.rearrange(self.masks[idx])
         z = z.masked_fill(mask, 0)
 
         return z, mask
@@ -56,20 +57,20 @@ class MaskLatent(nn.Module):
 
         assert 1 <= n <= self.features
 
-        return z[..., :n]
+        return z[:, :n]
 
     def expand(self, z: Tensor) -> Tensor:
         """Expand the latent space."""
 
-        *shape, C = z.shape
+        B, C, H, W = z.shape
 
         if C == self.features:
             return z
 
         assert C < self.features
 
-        zeros = torch.zeros(*shape, self.features - C, device=z.device)
-        z = torch.cat([z, zeros], dim=-1)
+        zeros = torch.zeros(B, self.features - C, H, W, device=z.device)
+        z = torch.cat([z, zeros], dim=1)
 
         return z
 

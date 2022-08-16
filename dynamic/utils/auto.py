@@ -31,7 +31,7 @@ def auto_device(method):
     return wrapper
 
 
-def to_device(x,  device: str | torch.device):
+def to_device(x, device: str | torch.device):
     if isinstance(x, Tensor):
         return x.to(device)
 
