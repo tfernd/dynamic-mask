@@ -7,7 +7,7 @@ from torch import Tensor
 
 import pytorch_lightning as pl
 
-from ..layers import PatchEncoder, PatchDecoder, MaskLatent, VectorQuantize
+from ..layers import PatchEncoder, PatchDecoder, MaskLatent
 from ..utils import auto_grad, auto_device, normalize, denormalize, num_parameters
 
 
@@ -25,7 +25,6 @@ class DynamicAutoEncoder(pl.LightningModule):
         ratio: float = 1,
         encoder_layers: int = 1,
         decoder_layers: int = 1,
-        code: Optional[int] = None,
     ) -> None:
         super().__init__()
 
@@ -38,7 +37,6 @@ class DynamicAutoEncoder(pl.LightningModule):
         self.ratio = ratio
         self.encoder_layers = encoder_layers
         self.decoder_layers = decoder_layers
-        self.code = code
 
         self.emb_size = emb_size = num_channels * patch_size**2
 
@@ -48,10 +46,9 @@ class DynamicAutoEncoder(pl.LightningModule):
         self.patch_encoder = PatchEncoder(*args, encoder_layers)
         self.patch_decoder = PatchDecoder(*args, decoder_layers)
         self.mask_latent = MaskLatent(emb_size)
-        self.quantize = VectorQuantize(emb_size, code) if code else None
 
         params = num_parameters(self)
-        self.name = f"DyAE(p{patch_size}_k{kernel_size}_c{num_channels}_r{ratio}_e{encoder_layers}_d{decoder_layers}_c{code})-{params:,}"
+        self.name = f"DyAE(p{patch_size}_k{kernel_size}_c{num_channels}_r{ratio}_e{encoder_layers}_d{decoder_layers})-{params:,}"
 
     @auto_grad
     @auto_device
@@ -64,20 +61,15 @@ class DynamicAutoEncoder(pl.LightningModule):
         xn = normalize(x)
         z = self.patch_encoder(xn)
 
-        if self.quantize is not None:
-            z, idx = self.quantize.forward(z)
-            mask = None
-        else:
-            z, mask = self.mask_latent(z)
-            z = self.mask_latent.crop(z, n)
+        z, mask = self.mask_latent(z)
+        z = self.mask_latent.crop(z, n)
 
         return z, mask
 
     @auto_grad
     @auto_device
     def decode(self, z: Tensor) -> Tensor:
-        if self.quantize is None:
-            z = self.mask_latent.expand(z)
+        z = self.mask_latent.expand(z)
 
         out = self.patch_decoder(z)
         out = denormalize(out)
