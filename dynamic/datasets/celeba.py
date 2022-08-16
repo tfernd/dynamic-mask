@@ -1,4 +1,3 @@
-#%%
 from __future__ import annotations
 from typing import Optional
 
@@ -13,15 +12,9 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch.utils.data import Dataset
 
-from einops import rearrange
-
 from tqdm.autonotebook import tqdm
 
-
-import sys
-
-sys.path.append("../../")
-from dynamic.utils import img2tensor
+from ..utils import img2tensor
 
 
 SIZE = 256
@@ -144,11 +137,3 @@ class CelebA(Dataset):
         name = self.__class__.__qualname__
 
         return f"{name}(size={self.size})"
-
-
-if __name__ == "__main__":
-    HERE = Path(__file__).parent
-    MAIN = HERE.parent.parent
-
-    # pre-cache
-    ds = CelebA(MAIN / "datasets" / "CelebA")
