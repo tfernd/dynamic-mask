@@ -1,8 +1,10 @@
 from __future__ import annotations
-from typing import Optional
+from typing import Optional, Generator
 
 from pathlib import Path
 from PIL import Image
+
+from multiprocessing.pool import ThreadPool
 
 import math
 import numpy as np
@@ -23,6 +25,7 @@ class CelebA(Dataset):
     def __init__(
         self,
         root: str | Path,
+        /,
         *,
         size: int = SIZE,
     ) -> None:
@@ -37,7 +40,7 @@ class CelebA(Dataset):
     def __len__(self) -> int:
         return len(self.paths)
 
-    def __getitem__(self, idx: int) -> Tensor:
+    def __getitem__(self, idx: int, /) -> Tensor:
         path = self.paths[idx]
         img = Image.open(path).convert("RGB")
 
@@ -45,6 +48,21 @@ class CelebA(Dataset):
             img = img.resize((self.size, self.size), resample=Image.BICUBIC)
 
         return img2tensor(img, channel_first=True)
+
+    def dataloader(
+        self,
+        *,
+        batch_size: int = 1,
+        steps: int = 1,
+        processes: Optional[int] = None,
+    ) -> Generator[Tensor, None, None]:
+        with ThreadPool(processes) as pool:
+            for _ in range(steps):
+                idx: list[int] = torch.randint(0, len(self), (batch_size,)).tolist()
+
+                arrr = pool.map(self.__getitem__, idx)
+
+                yield torch.stack(arrr, dim=0)
 
     def __repr__(self) -> str:
         name = self.__class__.__qualname__
@@ -62,6 +80,7 @@ class CelebACached(Dataset):
     def __init__(
         self,
         root: str | Path,
+        /,
         *,
         size: int = SIZE,
         cache_path: Optional[str | Path] = None,
@@ -121,7 +140,7 @@ class CelebACached(Dataset):
             }
             torch.save(obj, cached_file)
 
-    def __getitem__(self, idx: int | list[int] | Tensor | slice) -> Tensor:
+    def __getitem__(self, idx: int | list[int] | Tensor | slice,/) -> Tensor:
         # add batch dimension
         if isinstance(idx, int):
             idx = [idx]
@@ -138,14 +157,13 @@ class CelebACached(Dataset):
     def __len__(self) -> int:
         return len(self.data)
 
-    # TODO rename?
-    def batch(
+    def dataloader(
         self,
         *,
         batch_size: int = 1,
         steps: int = 1,
         sizes: Optional[tuple[int, int, int]] = None,
-    ):
+    ) -> Generator[Tensor, None, None]:
         for _ in range(steps):
             idx = torch.randint(0, len(self), (batch_size,))
 

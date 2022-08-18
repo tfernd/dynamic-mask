@@ -7,7 +7,7 @@ from torch import Tensor
 
 import pytorch_lightning as pl
 
-from ..layers import PatchEncoder, PatchDecoder, MaskLatent
+from ..layers import PatchEncoder, PatchDecoder, MaskLatent, VGGPerceptualLoss
 from ..utils import auto_grad, auto_device, normalize, denormalize, num_parameters
 
 
@@ -39,6 +39,10 @@ class DynamicAutoEncoder(pl.LightningModule):
         self.decoder_layers = decoder_layers
 
         self.emb_size = emb_size = num_channels * patch_size**2
+        self.receptive_field = (
+            kernel_size * 2 * encoder_layers - 1,
+            kernel_size * 2 * decoder_layers - 1,
+        )
 
         # layers
         args = (patch_size, kernel_size, num_channels, ratio)
@@ -49,6 +53,9 @@ class DynamicAutoEncoder(pl.LightningModule):
 
         params = num_parameters(self)
         self.name = f"DyAE(p{patch_size}_k{kernel_size}_c{num_channels}_r{ratio}_e{encoder_layers}_d{decoder_layers})-{params:,}"
+
+        self.vgg = VGGPerceptualLoss(resize=False)
+        self.use_vgg = False
 
     @auto_grad
     @auto_device
@@ -104,10 +111,21 @@ class DynamicAutoEncoder(pl.LightningModule):
         z, mask = self.encode(data)
         out = self.decode(z)
 
-        loss = self.loss(data, out)
-        self.log("training/loss", loss)
+        with torch.set_grad_enabled(not self.use_vgg):
+            loss = self.loss(data, out)
+            self.log("training/loss", loss)
 
         psnr = self.psnr_from_loss(loss.detach())
         self.log("training/psnr", psnr, prog_bar=True)
+
+        with torch.set_grad_enabled(self.use_vgg):
+            vgg_loss = self.vgg(data, out)
+            self.log("training/vgg_loss", vgg_loss)
+
+        if self.use_vgg:
+            loss = vgg_loss
+
+        if not self.use_vgg and loss.item() <= 6:
+            self.use_vgg = True
 
         return loss
