@@ -1,8 +1,6 @@
 from __future__ import annotations
 from typing import Optional
 
-import math
-
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -18,6 +16,7 @@ class MaskLatent(nn.Module):
     def __init__(
         self,
         features: int,
+        /,
         groups: int = 1,
     ) -> None:
         super().__init__()
