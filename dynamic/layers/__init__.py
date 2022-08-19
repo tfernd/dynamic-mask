@@ -1,5 +1,4 @@
-from .conv_block import ConvBlock
+from .conv_block import ConvBlock, Block
 from .patch import PatchEncoder, PatchDecoder
 from .mask_latent import MaskLatent
-from .vgg_loss import VGGPerceptualLoss
-from .vector_quantize import VectorQuantize
+from .auto_encoder import AutoEncoder

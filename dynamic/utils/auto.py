@@ -7,8 +7,6 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-import pytorch_lightning as pl
-
 
 # TODO add type hints for method
 def auto_grad(method):
@@ -27,9 +25,12 @@ def auto_device(method):
     """Automatically send args and kwargs to the correct device."""
 
     @wraps(method)
-    def wrapper(self: pl.LightningModule, *args, **kwargs):
-        args = tuple(to_device(v, self.device) for v in args)
-        kwargs = {k: to_device(v, self.device) for (k, v) in kwargs.items()}
+    def wrapper(self: nn.Module, *args, **kwargs):
+        param = next(self.parameters())
+        device = param.device
+
+        args = tuple(to_device(v, device) for v in args)
+        kwargs = {k: to_device(v, device) for (k, v) in kwargs.items()}
 
         return method(self, *args, **kwargs)
 

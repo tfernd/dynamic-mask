@@ -140,7 +140,7 @@ class CelebACached(Dataset):
             }
             torch.save(obj, cached_file)
 
-    def __getitem__(self, idx: int | list[int] | Tensor | slice,/) -> Tensor:
+    def __getitem__(self, idx: int | list[int] | Tensor | slice, /) -> Tensor:
         # add batch dimension
         if isinstance(idx, int):
             idx = [idx]
@@ -162,21 +162,11 @@ class CelebACached(Dataset):
         *,
         batch_size: int = 1,
         steps: int = 1,
-        sizes: Optional[tuple[int, int, int]] = None,
     ) -> Generator[Tensor, None, None]:
         for _ in range(steps):
             idx = torch.randint(0, len(self), (batch_size,))
 
-            prev_size = self.size
-            if sizes is not None:
-                arr = [i for i in range(sizes[0], sizes[1] + 1) if i % sizes[2] == 0]
-                self.size = np.random.choice(arr)
-
-            data = self[idx]
-
-            self.size = prev_size
-
-            yield data
+            yield self[idx]
 
     def __repr__(self) -> str:
         name = self.__class__.__qualname__

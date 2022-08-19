@@ -31,12 +31,9 @@ class MaskLatent(nn.Module):
         self.groups = groups
 
         # layers
-        masks = ~torch.eye(features + 1).cumsum(0).bool()
-        masks = masks[:, 1:]
-
+        masks = ~torch.eye(features).cumsum(0).bool()
         select = masks.sum(1) % groups == 0
         masks = masks[select]
-
         self.register_buffer("masks", masks)
 
         self.rearrange = Rearrange("b h w c -> b c h w")
@@ -45,7 +42,6 @@ class MaskLatent(nn.Module):
         self,
         z: Tensor,
         /,
-        *,
         mask: Optional[Tensor] = None,
         n: Optional[int] = None,
     ) -> tuple[Tensor, Optional[Tensor]]:
@@ -62,7 +58,7 @@ class MaskLatent(nn.Module):
             z = z.masked_fill(mask, 0)
 
         if n is not None:
-            assert 0 < n <= 1
+            assert 0 < n <= self.features
             assert n % self.groups == 0
 
             z = z[:, :n]
